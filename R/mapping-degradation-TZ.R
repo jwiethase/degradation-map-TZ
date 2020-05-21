@@ -25,12 +25,13 @@ non_CCRO <- rgdal::readOGR("data/EarthEngine_shapefiles/non_CCRO.shp") %>%
 
 # Make function to make maps for the different areas and times  ---------------------------
 plotMaskedArea <- function(rasterimg, area){
-   if(grepl('^before', deparse(substitute(rasterimg)), ignore.case=TRUE) == TRUE){
+   if (grepl('before', rasterimg, ignore.case=TRUE) == TRUE){
       years = "2012-2016"
-   } else {
+   } 
+   if(grepl('during', rasterimg, ignore.case=TRUE) == TRUE){
       years = "2015-2018"
    }
-   newplot <- rasterVis::gplot(rasterimg %>% mask(area)) + 
+   newplot <- rasterVis::gplot(get(rasterimg) %>% mask(area)) + 
       geom_tile(aes(fill = value)) +
       scale_fill_gradient(low = '#D55E00', high = '#009E73', na.value="white", guide = FALSE) +
       coord_equal() +
@@ -44,14 +45,16 @@ plotMaskedArea <- function(rasterimg, area){
    return(newplot)
 }
 
+
 # Loop through all image files, make masked plots for CCRO and non-CCRO areas  ---------------------------
 rasterlist <- ls(pattern = "bare")
+#grep(list.files(path="data"), pattern='new_', inv=T, value=T)
 
 for(i in 1:length(rasterlist)){
    new_name1 <- paste("CCRO_", rasterlist[[i]], sep = "")
-   assign(new_name1, plotMaskedArea(get(rasterlist[[i]]), CCRO))
+   assign(new_name1, plotMaskedArea(rasterlist[[i]], CCRO))
    new_name2 <- paste("nonCCRO_", rasterlist[[i]], sep = "")
-   assign(new_name2, plotMaskedArea(get(rasterlist[[i]]), non_CCRO))
+   assign(new_name2, plotMaskedArea(rasterlist[[i]], non_CCRO))
 }
 
 # Arrange the plotted maps  ---------------------------
@@ -80,4 +83,3 @@ ggsave("output/CCRO_raw_bare_inv.tiff", plot = bare_inv_arranged_maps_raw, devic
 ggsave("output/CCRO_signif_bare_inv.tiff", plot = bare_inv_arranged_maps_signif, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
 ggsave("output/CCRO_raw_bare.tiff", plot = bare_arranged_maps_raw, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
 ggsave("output/CCRO_signif_bare.tiff", plot = bare_arranged_maps_signif, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
-
