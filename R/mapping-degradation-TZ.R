@@ -4,6 +4,9 @@ library(tidyverse)
 library(rasterVis)
 library(gridExtra)
 library(grid)
+library(egg)
+library(ggpubr)
+
 
 theme_set(theme_void(base_size = 12))
 
@@ -11,12 +14,16 @@ theme_set(theme_void(base_size = 12))
 temp = list.files(path = "data/EarthEngine_images", pattern="*.tif")
 for (i in 1:length(temp)) assign(gsub("\\..*","",temp[i]) %>% str_replace_all("-", "_"), raster::raster(paste("data/EarthEngine_images/", temp[i], sep = "")))
 
+# Combine image files  ---------------------------
+bare_before <- bare_before + bare_before_q
+bare_during <- bare_during + bare_during_q
+bare_invasive_before <- bare_invasive_before + bare_invasive_before_q
+bare_invasive_during <- bare_invasive_during + bare_invasive_during_q
+
+remove(bare_before_q, bare_during_q, bare_invasive_before_q, bare_invasive_during_q)
+
 # Load the shapefiles, transform to image projection  ---------------------------
 NTRI <- rgdal::readOGR("data/EarthEngine_shapefiles/NTRI.shp") %>% 
-      spTransform(proj4string(bare_before)) 
-managedNTRI <- rgdal::readOGR("data/EarthEngine_shapefiles/") %>% 
-      spTransform(proj4string(bare_before)) 
-unmanagedNTRI <- rgdal::readOGR("data/EarthEngine_shapefiles/unmanagedNTRI.shp") %>% 
       spTransform(proj4string(bare_before)) 
 CCRO <- rgdal::readOGR("data/EarthEngine_shapefiles/CCRO.shp") %>% 
       spTransform(proj4string(bare_before))
@@ -25,26 +32,20 @@ non_CCRO <- rgdal::readOGR("data/EarthEngine_shapefiles/non_CCRO.shp") %>%
 
 # Make function to make maps for the different areas and times  ---------------------------
 plotMaskedArea <- function(rasterimg, area){
-   if (grepl('before', rasterimg, ignore.case=TRUE) == TRUE){
-      years = "2012-2016"
-   } 
-   if(grepl('during', rasterimg, ignore.case=TRUE) == TRUE){
-      years = "2015-2018"
-   }
    newplot <- rasterVis::gplot(get(rasterimg) %>% mask(area)) + 
-      geom_tile(aes(fill = value)) +
-      scale_fill_gradient(low = '#D55E00', high = '#009E73', na.value="white", guide = FALSE) +
+      geom_tile(aes(fill = as.factor(value))) +
+      scale_fill_manual(values = c("#999999", "#F0E442", "#D55E00"), na.value="white",
+                        labels = c("none", "raw", "large", ""), name = "Improvement scores") +
       coord_equal() +
-      ggtitle(years) +
       geom_path(data = NTRI %>% fortify(), 
                 aes(x = long, y = lat, group = group),
                 color = 'black') +
       geom_path(data = area %>% fortify(), 
                 aes(x = long, y = lat, group = group),
-                color = 'black', alpha = .6)
+                color = 'black', alpha = .6) +
+      theme(legend.position="bottom")
    return(newplot)
 }
-
 
 # Loop through all image files, make masked plots for CCRO and non-CCRO areas  ---------------------------
 rasterlist <- ls(pattern = "bare")
@@ -58,31 +59,40 @@ for(i in 1:length(rasterlist)){
 }
 
 # Arrange the plotted maps  ---------------------------
-bare_inv_arranged_maps_raw <- gridExtra::grid.arrange(
-   arrangeGrob(CCRO_bare_invasive_before, CCRO_bare_invasive_during, top = grid::textGrob("Within CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   arrangeGrob(nonCCRO_bare_invasive_before, nonCCRO_bare_invasive_during, top = grid::textGrob("Outside CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   nrow = 1)
+bare_inv_arranged_maps <- ggpubr::ggarrange(
+   tag_facet(CCRO_bare_invasive_before,
+             tag_pool = "CCRO: 2012-2016",
+             open = "", close = "", vjust = 1.1, hjust = 0), 
+   tag_facet(CCRO_bare_invasive_during, 
+             tag_pool = "CCRO: 2015-2018",
+             open = "", close = "", vjust = 1.1, hjust = 0), 
+   tag_facet(nonCCRO_bare_invasive_before,
+             tag_pool = "non-CCRO: 2012-2016",
+             open = "", close = "", vjust = 1.1, hjust = 0),
+   tag_facet(nonCCRO_bare_invasive_during,
+             tag_pool = "non-CCRO: 2015-2018",
+             open = "", close = "", vjust = 1.1, hjust = 0),
+   ncol=4, nrow=1, common.legend = TRUE, legend="bottom")
 
-bare_inv_arranged_maps_signif <- gridExtra::grid.arrange(
-   arrangeGrob(CCRO_bare_invasive_before_q, CCRO_bare_invasive_during_q, top = grid::textGrob("Within CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   arrangeGrob(nonCCRO_bare_invasive_before_q, nonCCRO_bare_invasive_during_q, top = grid::textGrob("Outside CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2),  
-   nrow = 1)
 
-bare_arranged_maps_raw <- gridExtra::grid.arrange(
-   arrangeGrob(CCRO_bare_before, CCRO_bare_during, top = grid::textGrob("Within CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   arrangeGrob(nonCCRO_bare_before, nonCCRO_bare_during, top = grid::textGrob("Outside CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   nrow = 1)
-
-bare_arranged_maps_signif <- gridExtra::grid.arrange(
-   arrangeGrob(CCRO_bare_before_q, CCRO_bare_during_q, top = grid::textGrob("Within CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2), 
-   arrangeGrob(nonCCRO_bare_before_q, nonCCRO_bare_during_q, top = grid::textGrob("Outside CCRO area", gp = gpar(cex = 1.5), just = "top"), ncol = 2),  
-   nrow = 1)
+bare_arranged_maps <- ggpubr::ggarrange(
+   tag_facet(CCRO_bare_before,
+             tag_pool = "CCRO: 2012-2016",
+             open = "", close = "", vjust = 1.1, hjust = 0), 
+   tag_facet(CCRO_bare_during, 
+             tag_pool = "CCRO: 2015-2018",
+             open = "", close = "", vjust = 1.1, hjust = 0), 
+   tag_facet(nonCCRO_bare_before,
+             tag_pool = "non-CCRO: 2012-2016",
+             open = "", close = "", vjust = 1.1, hjust = 0),
+   tag_facet(nonCCRO_bare_during,
+             tag_pool = "non-CCRO: 2015-2018",
+             open = "", close = "", vjust = 1.1, hjust = 0),
+   ncol=4, nrow=1, common.legend = TRUE, legend="bottom")
 
 # Save the finished maps  ---------------------------
-ggsave("output/CCRO_raw_bare_inv.tiff", plot = bare_inv_arranged_maps_raw, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
-ggsave("output/CCRO_signif_bare_inv.tiff", plot = bare_inv_arranged_maps_signif, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
-ggsave("output/CCRO_raw_bare.tiff", plot = bare_arranged_maps_raw, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
-ggsave("output/CCRO_signif_bare.tiff", plot = bare_arranged_maps_signif, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
+ggsave("output/CCRO_bare_inv.png", plot = bare_inv_arranged_maps, device = "png", width = 18.4, height = 9, units = "cm", dpi = 300)
+ggsave("output/CCRO_bare.png", plot = bare_arranged_maps, device = "png", width = 18.4, height = 9, units = "cm", dpi = 300)
 
 # Quick summary statistics  ---------------------------
 
@@ -157,13 +167,13 @@ df <- rbind(df1, df2, df3, df4, df5, df6, df7, df8, df9)
 # Plot ratios
 ratioplot <- ggplot(df, aes(fill=management, y=percentage, x=name)) + 
    geom_bar(position="stack", stat="identity") +
-   facet_wrap(facets = "testtype", ncol = 4) +
+   facet_wrap(facets = "testtype", ncol = 5, scales = "free") +
    theme_bw() +
    theme(axis.title.x=element_blank()) +
    scale_fill_grey()
 
 # Save the finished map
-ggsave("output/ratioplot.tiff", plot = ratioplot, device = "tiff", width = 18.4, height = 9, units = "cm", dpi = 150)
+ggsave("output/ratioplot.jpeg", plot = ratioplot, device = "jpg", width = 18.4, height = 9, units = "cm", dpi = 150)
 
 
 
