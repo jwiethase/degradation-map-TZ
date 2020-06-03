@@ -90,9 +90,22 @@ bare_arranged_maps <- ggpubr::ggarrange(
              open = "", close = "", vjust = 1.1, hjust = 0),
    ncol=4, nrow=1, common.legend = TRUE, legend="bottom")
 
+all_maps <- ggpubr::ggarrange(
+   tag_facet(bare_inv_arranged_maps,
+             tag_pool = "Bare ground & invasive plants",
+             open = "", close = "", vjust = 1.1, hjust = 0), 
+   tag_facet(bare_arranged_maps,
+             tag_pool = "Bare ground alone",
+             open = "", close = "", vjust = 1.1, hjust = 0),
+   ncol = 1, nrow = 2)
+
+
+
 # Save the finished maps  ---------------------------
-ggsave("output/CCRO_bare_inv.png", plot = bare_inv_arranged_maps, device = "png", width = 18.4, height = 9, units = "cm", dpi = 300)
-ggsave("output/CCRO_bare.png", plot = bare_arranged_maps, device = "png", width = 18.4, height = 9, units = "cm", dpi = 300)
+ggsave("output/CCRO_bare_inv.png", plot = bare_inv_arranged_maps, device = "png", width = 21, height = 9, units = "cm", dpi = 300)
+ggsave("output/CCRO_bare.png", plot = bare_arranged_maps, device = "png", width = 21, height = 9, units = "cm", dpi = 300)
+ggsave("output/CCRO_bare_and_bareinv.png", plot = all_maps, device = "png", width = 21, height = 16, units = "cm", dpi = 300)
+
 
 # Quick summary statistics  ---------------------------
 
@@ -173,7 +186,7 @@ ratioplot <- ggplot(df, aes(fill=management, y=percentage, x=name)) +
    scale_fill_grey()
 
 # Save the finished map
-ggsave("output/ratioplot.jpeg", plot = ratioplot, device = "jpg", width = 18.4, height = 9, units = "cm", dpi = 150)
+ggsave("output/ratioplot.jpeg", plot = ratioplot, device = "jpg", width = 21, height = 9, units = "cm", dpi = 150)
 
 
 
